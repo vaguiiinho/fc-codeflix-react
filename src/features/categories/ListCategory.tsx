@@ -1,55 +1,101 @@
-import { Box, Button, Typography } from "@mui/material";
+import DeleteIcon from '@mui/icons-material/Delete';
+import { Box, Button, IconButton, Typography } from "@mui/material";
+import {
+    DataGrid,
+    GridColDef,
+    GridRenderCellParams,
+    GridRowsProp,
+    GridToolbar
+} from '@mui/x-data-grid';
+import { useSnackbar } from 'notistack';
 import { Link } from "react-router-dom";
-import { useAppSelector } from "../../app/hooks";
-import { selectCategories } from "./categorySlice";
-import { DataGrid, GridColDef, GridValueGetterParams } from '@mui/x-data-grid';
+import { useAppDispatch, useAppSelector } from "../../app/hooks";
+import { deleteCategory, selectCategories } from "./categorySlice";
 
 
 export const CategoryList = () => {
     const categories = useAppSelector(selectCategories)
-    const rows = [
-        { id: 1, lastName: 'Snow', firstName: 'Jon', age: 35 },
-        { id: 2, lastName: 'Lannister', firstName: 'Cersei', age: 42 },
-        { id: 3, lastName: 'Lannister', firstName: 'Jaime', age: 45 },
-        { id: 4, lastName: 'Stark', firstName: 'Arya', age: 16 },
-        { id: 5, lastName: 'Targaryen', firstName: 'Daenerys', age: null },
-        { id: 6, lastName: 'Melisandre', firstName: null, age: 150 },
-        { id: 7, lastName: 'Clifford', firstName: 'Ferrara', age: 44 },
-        { id: 8, lastName: 'Frances', firstName: 'Rossini', age: 36 },
-        { id: 9, lastName: 'Roxie', firstName: 'Harvey', age: 65 },
-    ];
+
+    const componentsProps = {
+        toolbar: {
+            showQuickFilter: true,
+            quickFilterProps: { debounceMs: 500 },
+        },
+    }
+
+    const rows: GridRowsProp = categories.map(c => ({
+        id: c.id,
+        name: c.name,
+        description: c.description,
+        isActive: c.is_active,
+        createdAt: new Date(c.created_at).toLocaleDateString("Pt-br"),
+    }))
 
     const columns: GridColDef[] = [
-        { field: 'id', headerName: 'ID', width: 90 },
         {
-            field: 'firstName',
-            headerName: 'First name',
-            width: 150,
-            editable: true,
+            field: 'name',
+            headerName: 'Name',
+            flex: 1,
+            renderCell: renderNameCell
         },
         {
-            field: 'lastName',
-            headerName: 'Last name',
-            width: 150,
-            editable: true,
+            field: 'isActive',
+            headerName: 'Active',
+            flex: 1,
+            type: 'boolean',
+            renderCell: renderIsActiveCell
         },
         {
-            field: 'age',
-            headerName: 'Age',
-            type: 'number',
-            width: 110,
-            editable: true,
+            field: 'createdAt',
+            headerName: 'Created At',
+            flex: 1,
         },
         {
-            field: 'fullName',
-            headerName: 'Full name',
-            description: 'This column has a value getter and is not sortable.',
-            sortable: false,
-            width: 160,
-            valueGetter: (params: GridValueGetterParams) =>
-                `${params.row.firstName || ''} ${params.row.lastName || ''}`,
+            field: 'id',
+            headerName: 'Actions',
+            flex: 1,
+            renderCell: renderActionsCell
         },
     ];
+
+    const dispatch = useAppDispatch()
+    const { enqueueSnackbar } = useSnackbar()
+
+    function handleDeleteCategory(id: string) {
+        dispatch(deleteCategory(id))
+        enqueueSnackbar('Category deleting success!', { variant: "success" })
+    }
+
+    function renderActionsCell(params: GridRenderCellParams) {
+        return (
+            <IconButton
+                color="secondary"
+                onClick={() => handleDeleteCategory(params.value)}
+            >
+                <DeleteIcon />
+            </IconButton>
+        )
+    }
+
+
+    function renderIsActiveCell(rowData: GridRenderCellParams) {
+        return (
+            <Typography color={rowData.value ? "primary" : "secondary"}>
+                {rowData.value ? "Active" : "Inactive"}
+            </Typography>
+        )
+    }
+
+    function renderNameCell(rowData: GridRenderCellParams) {
+        return (
+            <Link
+                state={{ textDecoration: "none" }}
+                to={`/categories/edit/${rowData.id}`}
+            >
+                <Typography color="primary">{rowData.value}</Typography>
+            </Link>
+        )
+    }
 
     return (
         <Box maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
@@ -64,19 +110,17 @@ export const CategoryList = () => {
                     New Category
                 </Button>
             </Box>
-            {/* {
-                categories.map((category) => (
-                    <Typography key={category.id}>{category.name}</Typography>
-                ))} */}
-            <Box sx={{ height: 400, width: '100%' }}>
+            <Box sx={{ display: "flex", height: 500 }}>
                 <DataGrid
                     rows={rows}
                     columns={columns}
-                    pageSize={5}
-                    rowsPerPageOptions={[5]}
-                    checkboxSelection
+                    rowsPerPageOptions={[2, 10, 50, 100]}
+                    disableColumnFilter
+                    disableColumnSelector
+                    disableDensitySelector
                     disableSelectionOnClick
-                    experimentalFeatures={{ newEditingApi: true }}
+                    components={{ Toolbar: GridToolbar }}
+                    componentsProps={componentsProps}
                 />
             </Box>
         </Box>
